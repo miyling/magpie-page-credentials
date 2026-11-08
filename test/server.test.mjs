@@ -130,6 +130,9 @@ test("preflight and static page", async () => {
   const page = await call("GET", "/");
   assert.equal(page.status, 200);
   assert.match(page.headers["content-security-policy"], /connect-src 'self' http:\/\/127\.0\.0\.1:\d+/);
+  const ic = await call("GET", "/icons/codex-color.svg");
+  assert.equal(ic.status, 200);
+  assert.equal(ic.headers["content-type"], "image/svg+xml");
   const traversal = await call("GET", "/../package.json");
   assert.equal(traversal.status, 404);
 });

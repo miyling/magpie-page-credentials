@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>凭据额度</title>
+  <link rel="icon" href="icon.png" type="image/png">
   <link rel="stylesheet" href="style.css">
   <script src="model.js" defer></script>
   <script src="app.js" defer></script>
@@ -11,22 +12,38 @@
 <body>
   <header class="top">
     <div class="title">
+      <img class="app-logo" src="icon.png" width="24" height="24" alt="" draggable="false">
       <h1>凭据额度</h1>
       <span id="sub" class="sub">加载中…</span>
     </div>
     <div class="tools">
-      <label class="search">
+      <div class="search">
         <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <input id="q" type="search" placeholder="搜索邮箱 / 别名 / 套餐" autocomplete="off" spellcheck="false" aria-label="搜索账户">
-      </label>
-      <select id="sort" aria-label="排序">
+        <input id="q" type="search" placeholder="搜索邮箱 / 别名 / 套餐 / 标识" autocomplete="off" spellcheck="false" aria-label="搜索账户">
+        <button type="button" id="clearQ" class="clear-q" hidden title="清空搜索 (Esc)" aria-label="清空搜索">×</button>
+        <kbd id="qHint" class="kbd-hint" aria-hidden="true">/</kbd>
+      </div>
+      <select id="sort" aria-label="排序" title="排序方式">
         <option value="status">可用优先</option>
         <option value="risk">剩余最少在前</option>
         <option value="roomy">剩余最多在前</option>
         <option value="reset">最先重置在前</option>
         <option value="name">按名称</option>
       </select>
-      <button type="button" id="groupBtn" class="ghost" aria-pressed="true" title="按服务分组">分组</button>
+      <div class="seg" role="group" aria-label="视图切换">
+        <button type="button" id="viewCard" class="seg-btn" aria-pressed="true" title="卡片视图 (快捷键 V)">
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="2" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>卡片</span>
+        </button>
+        <button type="button" id="viewList" class="seg-btn" aria-pressed="false" title="列表视图 (快捷键 V)">
+          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>列表</span>
+        </button>
+      </div>
+      <button type="button" id="groupBtn" class="ghost" aria-pressed="true" title="按服务分组 (快捷键 G)">
+        <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2.5 3.5h4.5l1.5 1.8h5v7.2a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span>分组</span>
+      </button>
       <button type="button" id="refreshAll" class="primary" title="让 magpie 重新读取所有账户的额度（同一账户 30 秒内只读一次）">
         <svg class="spin-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>全部刷新</span>

@@ -1,67 +1,123 @@
-# magpie-page-credentials · 凭据额度
+<div align="center">
 
-[magpie](https://github.com/yetone/magpie) 的页面插件：在侧栏「凭据额度」里一页看清所有订阅账户的额度——5 小时 / 7 天等窗口的剩余、重置倒计时、恢复可用时间、订阅到期、Codex 重置卡，并且可以直接在页面里**刷新额度**、**使用 Codex 重置卡**。
+<img src="page/icon.png" width="88" height="88" alt="magpie-page-credentials">
 
-## 功能
+# magpie-page-credentials
 
-- **汇总**：账户总数与状态分布（可用 / 紧张 / 暂停调度 / 已耗尽）、现在可用的账户数、下一次窗口重置、可用重置卡总数及最早过期时间。
-- **账户卡片**（按服务分组，可搜索、筛选、排序）：
-  - 每个窗口一条「剩余额度」条：颜色随剩余变化，条上的竖线是「按时间匀速使用此刻应剩多少」，用得比时间快会标出「用得偏快」；
-  - 重置倒计时（每秒更新）和具体时间，用尽的账户显示「恢复可用」倒计时；
-  - 近 48 小时剩余额度走势（来自 magpie 的额度历史）；
-  - Antigravity 这类按模型计额的账户：按额度池分组，模型级窗口合并后收进「模型明细」；
-  - WorkBuddy 积分、按量计费服务的余额与走势；
-  - 订阅到期、是否自动续费、已用重置卡数、读取时间。
-- **刷新**：单个账户刷新，或「全部刷新」（magpie 对同一账户 30 秒内只真正读取一次）。
-- **Codex 重置卡**：确认对话框列出当前窗口、可选择使用哪一张（默认最早过期的），结果以 magpie 的返回码说明（已重置 / 无需重置 / 冷却中……）。
-- 跟随 magpie 的深浅色主题与配色；离开页面时暂停定时刷新。
+### Every account's quota and reset cards. One page.
 
-## 安装
+**View and manage all your subscriptions, coding plans, and API balances in [magpie](https://github.com/yetone/magpie).**<br>
+Track 5h / 7d rate-limit windows, live reset countdowns, and 48-hour sparklines,<br>
+refresh quotas on demand, and redeem reset cards (Codex & Zhipu GLM Coding Plan) right from the sidebar.
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-111111)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](package.json)
+[![magpie plugin](https://img.shields.io/badge/magpie-page%20plugin-3b6cf6)](https://github.com/yetone/magpie)
+
+**English** · [简体中文](README.zh-CN.md)
+
+</div>
+
+<br>
+
+## What it does
+
+`magpie-page-credentials` is a sidebar page plugin (`magpie.page`) for [magpie](https://github.com/yetone/magpie). It requires no separate sign-in or token import: it reads the quota snapshots of the accounts and providers you have already configured in magpie — including **Claude Code**, **Codex (ChatGPT)**, **Antigravity**, **GitHub Copilot**, **WorkBuddy**, **Zhipu GLM Coding Plan**, **Kimi**, **Qwen**, and pay-as-you-go API keys — and gives you a dedicated workspace to inspect and manage them.
+
+| Capability | Details |
+| --- | --- |
+| **Card & List Views** | Switch between **Card View** (multi-window meters + 48h usage sparklines) and **List View** (a single sticky table header, collapsible provider bands, and container-queried responsive columns for side-by-side comparison). Toggle anytime with `V`. |
+| **Smart Grouping & Interactive Summary** | Automatically consolidates standalone pay-as-you-go keys into an **API Balance** group while keeping subscriptions and coding plans grouped by provider. Click any top summary card (*Total*, *Usable*, *Exhausted / Held*, *Reset Cards*) to filter matching accounts immediately. |
+| **Primary vs. Auxiliary Window Separation** | Recognizes auxiliary tool/add-on allowances (`MCP · Month`, `Extra usage`, `On-demand`, and sub-credit buckets when `Total credits` is present) as secondary (`aside`). An exhausted add-on quota never falsely marks the account's primary models as exhausted. |
+| **Pace Tick & Burn-Rate Alert** | Draws an even-pace reference tick on time-bounded windows (5 hours / 7 days). When consumption runs >15% ahead of elapsed window time, the window is flagged as **Fast** (`用得偏快`). |
+| **Multi-Provider Reset Cards** | Supports both **Codex rate-limit reset credits** (via magpie gateway `/v1/magpie/quotas/codex-reset`) and **Zhipu GLM Coding Plan window reset vouchers** (matching available `5 hours` / `7 days` vouchers, redeeming them, and refreshing the plan quota). |
+| **Native Provider Icons & Theme Sync** | Ships with 190+ native magpie provider icons (full-color SVG/PNG logos, dark/light adaptive monochrome masks, and custom `file:` icons) and matches magpie's native scrollbar and theme tokens. |
+| **Live Countdowns & Keyboard Shortcuts** | Per-second reset and recovery countdowns, click-to-copy account identifiers, quick search (`/`), group toggle (`G`), per-account refresh, and refresh-all. |
+
+## Quick start
+
+**1 · Install**
+
+Run from the terminal:
 
 ```sh
 magpie plugin add github:miyling/magpie-page-credentials
 ```
 
-或在 magpie 的「插件」页里添加 `github:miyling/magpie-page-credentials`。安装后侧栏「插件」分组里会出现「凭据额度」。
+Or open magpie, go to **Plugins**, and add `github:miyling/magpie-page-credentials`.
 
-桌面应用和 `magpie web`（含 Docker 部署、反向代理）都可以用。
+**2 · Open the page**
 
-## 选项
+Once enabled, **Credentials** (`凭据额度` in Chinese) appears under the **Plugins** group in magpie's left sidebar:
 
-在插件管理里编辑本插件的选项（`plugins.json`）：
+- Works in the **desktop app** (macOS, Windows, Linux) and in **`magpie web`** (including Docker and reverse-proxy setups via `magpie.page.service`).
+- Automatically pauses background polling when you switch to another tab and refreshes when you return.
 
-| 选项 | 默认 | 说明 |
-| --- | --- | --- |
-| `port` | `4396` | 插件本地服务监听的端口（只绑 `127.0.0.1`）。端口被占用时改这里。 |
-| `gatewayUrl` | 自动 | magpie 网关地址。默认取 `MAGPIE_ADDR`，否则 `http://127.0.0.1:3425`。 |
-| `gatewayKey` | 自动 | 网关 key。默认从 magpie 配置目录的 `caller-keys.json` 里挑一把启用、满权限的 key。 |
-
-> **使用重置卡需要满权限的网关 key**：magpie 规定花重置卡（不可撤销）即使从本机发起也必须带一把启用、非只读、没有限制预算 / 模型 / 账户的网关 key。插件会自动使用 magpie 里已有的这类 key；没有的话，页面会提示你在「网关 › 网关 key」里新建一把，或填到 `gatewayKey` 选项里。
-
-## 工作方式与安全
-
-magpie 的插件页运行在 `sandbox="allow-scripts"`、`connect-src 'none'` 的 iframe 里，页面本身不能联网，所以本插件分两部分：
-
-1. **后端**（`index.mjs` → `lib/server.mjs`）：magpie 在 Bun 插件宿主里加载插件时，在 `127.0.0.1:<port>` 起一个本地服务，托管看板（`app/`），并把操作转给 magpie 网关的 `/v1/magpie/quotas/cards`、`/quotas/refresh`、`/quotas/history`、`/quotas/codex-reset`。
-2. **入口页**（`page/`）：magpie 侧栏打开的页面。它读取后端写下的会话密钥，然后把帧跳到本地服务——桌面窗口里直接是 `http://127.0.0.1:<port>/`，`magpie web` 里经 magpie 的页面服务反代（`magpie.page.service`），远程浏览器也能用。
-
-安全措施：
-
-- 网关 key 只在插件进程内存里使用，不会出现在任何响应、页面或日志里；
-- 本地服务只绑回环地址，校验 `Host`（防 DNS 重绑定）与 `Origin`；
-- 因为沙箱页是 opaque origin，`/api` 必须回 `Access-Control-Allow-Origin: *`；为防止其他网站借此读取账户信息或花掉重置卡，每次启动生成随机会话密钥，写在插件目录 `page/session/<port>.js`（只能经 magpie 按页面 token 读到），入口页通过 URL fragment 交给看板，`/api` 只认带该密钥的请求；
-- 远程 magpie 同步来的卡片（`office/codex` 这类）不会在这里刷新或使用重置卡。
-
-## 开发
+**3 · Update & reload**
 
 ```sh
-npm test                                   # 单元测试 + 用假网关测服务
-node scripts/dev.mjs 4397 http://127.0.0.1:3425   # 直接起服务预览，打印带会话密钥的地址
-CRED_GATEWAY_KEY=sk-magpie-… node scripts/dev.mjs  # 指定网关 key
+magpie plugin update
 ```
 
-零运行时依赖，Node ≥ 20 / Bun。
+After updating or editing local files, toggle the plugin **off and back on** in magpie's **Plugins** page to restart the plugin host.
 
-## 许可
+## Options
 
-MIT
+Configure plugin options in magpie's **Plugins** page (stored in `plugins.json`):
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `port` | `4396` | Local loopback port (`127.0.0.1`) for the plugin's backend service. Change this if port `4396` is in use. |
+| `gatewayUrl` | `""` (auto) | magpie gateway address. Defaults to `MAGPIE_ADDR` if set, otherwise `http://127.0.0.1:3425`. |
+| `gatewayKey` | `""` (auto) | Full-access gateway key used for Codex reset actions. Auto-discovered from `caller-keys.json` if omitted. |
+
+> **About reset card permissions**:
+> - **Codex reset credits**: Because spending a Codex reset credit cannot be undone, magpie's gateway requires an **enabled, unrestricted, non-read-only** gateway key even on loopback. The plugin automatically picks a qualifying key from `caller-keys.json`; if none exists yet, create one under **Gateway → Gateway keys** or set `gatewayKey` in the plugin options.
+> - **Zhipu GLM Coding Plan reset vouchers**: The plugin reads the provider's configuration from `providers.json`, queries available `FIVE_HOUR` / `WEEK` reset vouchers for the selected window, redeems the voucher, and triggers a quota refresh on magpie's gateway.
+
+## Architecture & security
+
+magpie renders plugin pages inside a sandboxed `iframe` (`sandbox="allow-scripts"`, `connect-src 'none'`), so the frame itself cannot make direct network calls to magpie's gateway. This plugin splits into two parts:
+
+```text
+index.mjs          Bun plugin host entry; manages the local HTTP service lifecycle
+lib/
+  server.mjs       Local service (127.0.0.1:4396): static dashboard, /api/* routes, Host/Origin & session checks
+  gateway.mjs      Talks to magpie's gateway and upstream reset endpoints (Codex / Zhipu GLM / remote nodes)
+  session.mjs      Generates a 24-byte random secret per run and writes page/session/<port>.js atomically
+page/
+  index.html       Sandboxed sidebar entry page; reads the session secret and redirects the frame to the service
+  launcher.js      Handles direct loopback redirect on desktop and magpie.page.service proxy on magpie web
+app/
+  index.html       Dashboard shell (header, summary cards, filter bar, Card/List container, modal)
+  model.js         Pure data logic: provider metadata, window grouping, auxiliary windows, pace math, sorting
+  app.js           UI rendering & interactions: Card/List views, theme bridge, reset modal, keyboard shortcuts
+  style.css        Responsive layout (Container Queries), sticky table header, and magpie-native scrollbars
+  icons/           Built-in magpie provider icon set (color SVG/PNG + adaptive monochrome masks)
+test/
+  model.test.mjs   Unit tests for window grouping, status calculation, and multi-provider reset cards
+  server.test.mjs  Integration tests for session auth, DNS-rebinding protection, CORS, and gateway calls
+```
+
+**Security boundaries**:
+
+1. **Secrets stay in-process**: Gateway keys (`caller-keys.json`) and provider keys (`providers.json`) are read only inside the plugin backend process and are never included in API responses, DOM state, or logs.
+2. **Loopback-only + DNS-rebinding & Origin checks**: The service binds exclusively to `127.0.0.1` and verifies `Host` (`127.0.0.1:<port>` or `localhost:<port>`) and `Origin` (`null` from the sandboxed frame or loopback).
+3. **Per-run session secret (`x-cred-session`)**: Because a sandboxed iframe sends `Origin: null`, `/api/*` responds with `Access-Control-Allow-Origin: *`. To prevent arbitrary websites in a browser from calling the local port to read quotas or spend reset cards, the backend generates a random 24-byte `base64url` secret on start (`page/session/<port>.js`, readable only through magpie's per-run page token), hands it to the dashboard via URL fragment, and verifies `x-cred-session` with `crypto.timingSafeEqual` on every request.
+4. **Remote cards stay read-only**: Cards synced from another remote magpie instance (e.g. `office/codex`) are clearly labeled and cannot be refreshed or reset from the local page.
+
+## Development
+
+Zero runtime dependencies. Requires Node.js ≥ 20 or Bun:
+
+```sh
+# Run unit and integration tests (all mocked, zero network calls)
+npm test
+
+# Start standalone preview server and print the local preview URL with session secret
+node scripts/dev.mjs 4397 http://127.0.0.1:3425
+```
+
+## License
+
+[MIT](LICENSE)

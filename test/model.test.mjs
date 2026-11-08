@@ -61,6 +61,7 @@ test("window labels and lengths", () => {
   assert.equal(M.windowLabel("7 days"), "7 天");
   assert.equal(M.windowLabel("Total credits"), "总积分");
   assert.equal(M.windowLabel("MCP · Month"), "MCP · 月");
+  assert.equal(M.windowLabel("deepseek-v4.1-flash tokens (est.)"), "deepseek-v4.1-flash（估）");
   assert.equal(M.windowSeconds("5 hours"), 18000);
   assert.equal(M.windowSeconds("7 days"), 604800);
   assert.equal(M.windowSeconds("Credits"), 0);
@@ -93,10 +94,28 @@ test("card status, availability and sorting", () => {
   assert.equal(M.sortCards([claude, codexTeam], "risk", NOW)[0], codexTeam);
 });
 
-test("reset cards are ordered by expiry and only local codex can use them", () => {
+test("reset cards are ordered by expiry and supported across local services", () => {
   const rc = M.resetCards(codexTeam);
   assert.deepEqual([...rc.map((x) => x.id)], ["RateLimitResetCredit_a", "RateLimitResetCredit_b"]);
   assert.equal(M.canUseReset(codexTeam), true);
+  const glmPlan = {
+    provider: "andy",
+    name: "glm",
+    icon: "zhipu-color",
+    kind: "plan",
+    windows: [
+      { name: "5 hours", used: 0 },
+      { name: "7 days", used: 4, resetsAt: iso(5 * 86400e3) },
+      { name: "MCP · Month", used: 100, resetsAt: iso(8 * 86400e3) },
+    ],
+    resets: { count: 1, byWindow: true, weekly: 1, each: [{ until: "2026-12-22T23:59:59+08:00", window: "weekly" }] },
+  };
+  assert.equal(M.canUseReset(glmPlan), true);
+  assert.equal(M.cardStatus(glmPlan), "ok", "aside MCP window does not mark GLM plan exhausted");
+  assert.equal(M.providerMeta(glmPlan).icon, "zhipu-color");
+  assert.equal(M.providerMeta(codexTeam).icon, "codex-color");
+  assert.equal(M.providerMeta(claude).icon, "claude-color");
+  assert.equal(M.groupKey({ provider: "newapikr", kind: "balance", balance: "$-10" }), "kind:balance");
   assert.equal(M.canUseReset({ ...codexTeam, provider: "office/codex" }), false);
   assert.equal(M.canUseReset({ ...codexTeam, from: "office" }), false);
   assert.equal(M.canUseReset(claude), false);
@@ -127,6 +146,10 @@ test("summary counts", () => {
 test("splitUser and search", () => {
   assert.deepEqual({ ...M.splitUser(codexTeam) }, { main: "a@example.com", rest: "Team · 1e3dc86e" });
   assert.deepEqual({ ...M.splitUser({ alias: "work", user: "a@b.c" }) }, { main: "work", rest: "a@b.c" });
+  const up = M.userParts(codexTeam);
+  assert.equal(up.main, "a@example.com");
+  assert.deepEqual([...up.badges], ["1e3dc86e"]);
+  assert.equal(up.rest, "");
   assert.equal(M.matches(codexTeam, "1E3DC"), true);
   assert.equal(M.matches(codexTeam, "nope"), false);
 });

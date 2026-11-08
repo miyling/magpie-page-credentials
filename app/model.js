@@ -3,17 +3,55 @@
   "use strict";
 
   var PROVIDERS = {
-    claude: { name: "Claude", color: "#d97757" },
-    codex: { name: "Codex", color: "#10a37f" },
-    antigravity: { name: "Antigravity", color: "#4285f4" },
-    gemini: { name: "Gemini", color: "#8e75f0" },
-    copilot: { name: "Copilot", color: "#8250df" },
-    workbuddy: { name: "WorkBuddy", color: "#2f6bff" },
-    kiro: { name: "Kiro", color: "#7b61ff" },
-    cursor: { name: "Cursor", color: "#6b7280" },
-    factory: { name: "Factory", color: "#f97316" },
-    qoder: { name: "Qoder", color: "#14b8a6" },
-    trae: { name: "Trae", color: "#ef4444" },
+    claude: { name: "Claude", color: "#d97757", icon: "claude-color" },
+    anthropic: { name: "Claude", color: "#d97757", icon: "claude-color" },
+    claudecode: { name: "Claude Code", color: "#d97757", icon: "claudecode-color" },
+    codex: { name: "Codex", color: "#10a37f", icon: "codex-color" },
+    openai: { name: "OpenAI", color: "#10a37f", icon: "openai" },
+    antigravity: { name: "Antigravity", color: "#4285f4", icon: "antigravity-color" },
+    gemini: { name: "Gemini", color: "#8e75f0", icon: "gemini-color" },
+    geminicli: { name: "Gemini", color: "#8e75f0", icon: "geminicli-color" },
+    "gemini-cli": { name: "Gemini CLI", color: "#8e75f0", icon: "geminicli-color" },
+    google: { name: "Google", color: "#4285f4", icon: "google-color" },
+    vertexai: { name: "Vertex AI", color: "#4285f4", icon: "vertexai-color" },
+    copilot: { name: "Copilot", color: "#8250df", icon: "githubcopilot" },
+    githubcopilot: { name: "Copilot", color: "#8250df", icon: "githubcopilot" },
+    workbuddy: { name: "WorkBuddy", color: "#2f6bff", icon: "workbuddy-color" },
+    codebuddy: { name: "CodeBuddy", color: "#2f6bff", icon: "codebuddy-color" },
+    zhipu: { name: "GLM", color: "#3b6cf6", icon: "zhipu-color" },
+    chatglm: { name: "GLM", color: "#3b6cf6", icon: "zhipu-color" },
+    glm: { name: "GLM", color: "#3b6cf6", icon: "zhipu-color" },
+    zai: { name: "Z.ai", color: "#3b6cf6", icon: "zai" },
+    deepseek: { name: "DeepSeek", color: "#4d6bfe", icon: "deepseek-color" },
+    minimax: { name: "MiniMax", color: "#f43f5e", icon: "minimax-color" },
+    "minimax-cn": { name: "MiniMax", color: "#f43f5e", icon: "minimax-color" },
+    stepfun: { name: "StepFun", color: "#0066ff", icon: "stepfun-color" },
+    "stepfun-cn": { name: "StepFun", color: "#0066ff", icon: "stepfun-color" },
+    kimi: { name: "Kimi", color: "#6366f1", icon: "kimi" },
+    moonshot: { name: "Kimi", color: "#6366f1", icon: "kimi" },
+    "kimi-code": { name: "Kimi Code", color: "#6366f1", icon: "kimi" },
+    "kimi-code-cn": { name: "Kimi Code", color: "#6366f1", icon: "kimi" },
+    qwen: { name: "Qwen", color: "#615ced", icon: "qwen-color" },
+    "qwen-cn": { name: "Qwen", color: "#615ced", icon: "qwen-color" },
+    bailian: { name: "Bailian", color: "#615ced", icon: "bailian-color" },
+    newapi: { name: "New API", color: "#0ea5e9", icon: "newapi-color" },
+    oneapi: { name: "One API", color: "#0ea5e9", icon: "oneapi" },
+    veloera: { name: "Veloera", color: "#0ea5e9", icon: "veloera" },
+    openrouter: { name: "OpenRouter", color: "#6366f1", icon: "openrouter" },
+    siliconcloud: { name: "SiliconFlow", color: "#7c3aed", icon: "siliconcloud-color" },
+    volcengine: { name: "Volcengine", color: "#3b82f6", icon: "volcengine-color" },
+    doubao: { name: "Doubao", color: "#3b82f6", icon: "doubao-color" },
+    kiro: { name: "Kiro", color: "#7b61ff", icon: "kiro-color" },
+    cursor: { name: "Cursor", color: "#6b7280", icon: "cursor" },
+    factory: { name: "Factory", color: "#f97316", icon: "factory" },
+    qoder: { name: "Qoder", color: "#14b8a6", icon: "qoder" },
+    trae: { name: "Trae", color: "#ef4444", icon: "trae-color" },
+    windsurf: { name: "Windsurf", color: "#06b6d4", icon: "windsurf" },
+    groq: { name: "Groq", color: "#f55036", icon: "groq" },
+    xai: { name: "xAI", color: "#6b7280", icon: "xai" },
+    grok: { name: "Grok", color: "#6b7280", icon: "grok" },
+    mistral: { name: "Mistral", color: "#f97316", icon: "mistral-color" },
+    magpie: { name: "Magpie", color: "#3b6cf6", icon: "magpie" },
   };
 
   function hue(s) {
@@ -29,18 +67,84 @@
     return i >= 0 ? id.slice(i + 1) : id;
   }
 
+  function iconKey(icon) {
+    return String(icon || "").toLowerCase().replace(/-color$/, "");
+  }
+
+  function resolveIcon(rawIcon, id, name) {
+    var raw = String(rawIcon || "").trim();
+    if (raw.indexOf("file:") === 0) return raw;
+    var lowId = String(id || "").toLowerCase();
+    var mId = PROVIDERS[lowId] || PROVIDERS[lowId.split("-")[0]];
+    if (raw && raw !== "magpie") {
+      if (PROVIDERS[raw] && PROVIDERS[raw].icon) return PROVIDERS[raw].icon;
+      return raw;
+    }
+    if (mId && mId.icon) return mId.icon;
+    var lowName = String(name || "").toLowerCase();
+    if (PROVIDERS[lowName] && PROVIDERS[lowName].icon) return PROVIDERS[lowName].icon;
+    return raw || "";
+  }
+
   function providerMeta(card) {
     var id = baseProvider(card.provider);
     var m = PROVIDERS[id];
-    if (m) return { id: id, name: m.name, color: m.color };
-    var name = card.name || id || "?";
-    return { id: id, name: name, color: "hsl(" + hue(id || name) + " 55% 50%)" };
+    var icon = resolveIcon(card.icon, id, card.name);
+    if (m) return { id: id, name: m.name, color: m.color, icon: icon || m.icon };
+    var ik = iconKey(card.icon);
+    var im = PROVIDERS[ik];
+    var name = card.name || (im && im.name) || id || "?";
+    var color = im ? im.color : "hsl(" + hue(id || name) + " 55% 50%)";
+    return { id: id, name: name, color: color, icon: icon || (im && im.icon) || "" };
+  }
+
+  function isBalanceCard(card) {
+    if (!card) return false;
+    if (card.kind === "balance") return true;
+    var ws = Array.isArray(card.windows) ? card.windows : [];
+    return !ws.length && !!(card.balance || card.sharedBalance);
+  }
+
+  // groupKey：将零散的纯余额 key 归入 "kind:balance"（API 余额），订阅/套餐按服务归组
+  function groupKey(card) {
+    if (isBalanceCard(card)) return "kind:balance";
+    return String(card.provider || "");
+  }
+
+  function groupMeta(key, cards) {
+    var list = Array.isArray(cards) ? cards : [];
+    if (key === "kind:balance") {
+      var icons = [];
+      list.forEach(function (c) {
+        var ic = providerMeta(c).icon;
+        if (ic && icons.indexOf(ic) < 0) icons.push(ic);
+      });
+      return {
+        key: key,
+        name: "API 余额",
+        color: "#0ea5e9",
+        icon: icons[0] || "newapi-color",
+        icons: icons.length ? icons : ["newapi-color"],
+        isBalanceGroup: true,
+      };
+    }
+    var first = list[0];
+    var m = first ? providerMeta(first) : { name: key, color: "#6b7280", icon: "" };
+    return {
+      key: key,
+      name: m.name + (first && first.from ? " · " + first.from : ""),
+      color: m.color,
+      icon: m.icon || "",
+      icons: m.icon ? [m.icon] : [],
+      isBalanceGroup: false,
+    };
   }
 
   // ---- 窗口 -------------------------------------------------------------------
 
   var WORDS = {
     credits: "积分", "extra credits": "额外积分", "total credits": "总积分",
+    "extra usage": "额外用量", "on-demand": "按量计费",
     month: "月", week: "周", day: "天", daily: "每日", weekly: "每周", monthly: "每月",
     requests: "请求", premium: "高级请求", tokens: "tokens",
   };
@@ -55,7 +159,12 @@
     }
     var lower = s.toLowerCase();
     if (WORDS[lower]) return WORDS[lower];
-    return s.replace(/\bMonth\b/g, "月").replace(/\bWeek\b/g, "周").replace(/\bDay\b/g, "天").replace(/\(est\.\)/g, "（估）");
+    return s
+      .replace(/\s+tokens\s*\(est\.\)/i, "（估）")
+      .replace(/\bMonth\b/g, "月")
+      .replace(/\bWeek\b/g, "周")
+      .replace(/\bDay\b/g, "天")
+      .replace(/\(est\.\)/g, "（估）");
   }
 
   // windowSeconds：窗口长度（秒），从名字推断；不知道返回 0
@@ -113,6 +222,20 @@
     return { elapsed: elapsed, used: used, ahead: used - elapsed };
   }
 
+  // isAsideWindow：附加/工具窗口（如智谱的 MCP · Month、按量计费 Extra usage / On-demand，
+  // 或存在 Total credits 时的子项 Credits / Extra credits），耗尽时不会阻断主模型对话。
+  function isAsideWindow(w, allWindows) {
+    if (!w) return false;
+    if (w.text) return true;
+    var name = String(w.name || "").trim();
+    if (/^(mcp\b|extra usage$|on-demand$|video\s*·|image\s*·)/i.test(name)) return true;
+    if (/^(credits|extra credits)$/i.test(name) && Array.isArray(allWindows)) {
+      var hasTotal = allWindows.some(function (x) { return /^total credits$/i.test(String(x.name || "").trim()); });
+      if (hasTotal) return true;
+    }
+    return false;
+  }
+
   // groupWindows：把窗口分组展示。
   // Antigravity 这类卡片有「池子级」窗口（5 小时 / 7 天，带 pool）和大量「模型级」
   // 窗口（带 family，名字形如 "Claude Opus 5.5 (High)"）：池子级按池分组直接显示，
@@ -124,7 +247,7 @@
     var poolOrder = [];
     var models = [];
     ws.forEach(function (w, i) {
-      var item = { w: w, i: i, label: windowLabel(w.name) };
+      var item = { w: w, i: i, label: windowLabel(w.name), aside: isAsideWindow(w, ws) };
       if (w.family && !windowSeconds(w.name)) { models.push(item); return; }
       if (w.pool) {
         if (!pools[w.pool]) { pools[w.pool] = []; poolOrder.push(w.pool); }
@@ -151,7 +274,7 @@
           if (m) byKey[key].variants.push(m[2]);
           return;
         }
-        var row = { w: it.w, i: it.i, base: base, variants: m ? [m[2]] : [], label: "" };
+        var row = { w: it.w, i: it.i, base: base, variants: m ? [m[2]] : [], label: "", aside: false };
         byKey[key] = row;
         merged.push(row);
       });
@@ -163,11 +286,13 @@
     return groups;
   }
 
-  // 用来判断账户状态的窗口：池子级 / 主窗口（不含模型明细）
+  // 用来判断账户状态的窗口：主模型/池子窗口（排除模型明细与 MCP · Month 等附加项）
   function primaryWindows(card) {
     var ws = Array.isArray(card.windows) ? card.windows : [];
-    var p = ws.filter(function (w) { return !(w.family && !windowSeconds(w.name)) && !w.text; });
-    return p.length ? p : ws.filter(function (w) { return !w.text; });
+    var nonModel = ws.filter(function (w) { return !(w.family && !windowSeconds(w.name)) && !w.text; });
+    var core = nonModel.filter(function (w) { return !isAsideWindow(w, ws); });
+    if (core.length) return core;
+    return nonModel.length ? nonModel : ws.filter(function (w) { return !w.text; });
   }
 
   function cardKey(card) {
@@ -214,8 +339,14 @@
     return best;
   }
 
+  function resetWindowLabel(w) {
+    if (w === "weekly" || w === "WEEK") return "周额度";
+    if (w === "fiveHour" || w === "FIVE_HOUR") return "5 小时额度";
+    return w ? String(w) : "";
+  }
+
   function resetCards(card) {
-    var r = card.resets;
+    var r = card && card.resets;
     if (!r || !(r.count > 0)) return [];
     var each = Array.isArray(r.each) ? r.each.slice() : [];
     each.sort(function (a, b) { return (time(a.until) || Infinity) - (time(b.until) || Infinity); });
@@ -226,20 +357,38 @@
     return String(card.provider || "").indexOf("/") >= 0 || !!card.from;
   }
 
+  // 支持所有本地拥有重置卡的服务（Codex、智谱 GLM 编码套餐等）
   function canUseReset(card) {
-    return card.provider === "codex" && !card.from && !!card.resets && card.resets.count > 0 && !!card.user;
+    return !isRemote(card) && !!(card && card.resets && card.resets.count > 0);
   }
 
   function displayName(card) {
     return card.alias || card.user || card.name || card.provider || "?";
   }
 
-  // splitUser："a@b.com · Team · 1e3dc86e" → { main: "a@b.com", rest: "Team · 1e3dc86e" }
+  // splitUser："a@example.com · Team · 1e3dc86e" → { main: "a@example.com", rest: "Team · 1e3dc86e" }
   function splitUser(card) {
     if (card.alias) return { main: card.alias, rest: card.user || "" };
     var u = String(card.user || card.name || card.provider || "?");
     var parts = u.split(" · ");
     return { main: parts[0], rest: parts.slice(1).join(" · ") };
+  }
+
+  // userParts：剔除与 plan 重复的段（例如 plan="team" 时不再重复显示 "Team"），
+  // 并把短工作空间哈希（如 1e3dc86e）提取为独立 badge，方便多账户一眼区分。
+  function userParts(card) {
+    var s = splitUser(card);
+    var planLower = String(card.plan || "").toLowerCase();
+    var segs = s.rest ? s.rest.split(" · ").filter(function (x) {
+      return x && x.toLowerCase() !== planLower;
+    }) : [];
+    var badges = [];
+    var rest = [];
+    segs.forEach(function (x) {
+      if (/^[0-9a-f]{6,12}$/i.test(x)) badges.push(x);
+      else rest.push(x);
+    });
+    return { main: s.main, badges: badges, rest: rest.join(" · ") };
   }
 
   // ---- 汇总 -------------------------------------------------------------------
@@ -268,8 +417,8 @@
 
   // ---- 排序与筛选 -----------------------------------------------------------
 
-  // 「可用优先」：能用的在前，用不了的在后
-  var STATUS_RANK = { ok: 0, low: 1, info: 2, held: 3, out: 4, error: 5 };
+  // 「可用优先」：能用的在前，用不了的在后，纯余额卡排在订阅之后
+  var STATUS_RANK = { ok: 0, low: 1, held: 2, out: 3, error: 4, info: 5 };
 
   function sortCards(cards, by, now) {
     var list = cards.slice();
@@ -285,7 +434,6 @@
       status: function (a, b) {
         var d = STATUS_RANK[cardStatus(a)] - STATUS_RANK[cardStatus(b)];
         if (d) return d;
-        // 都不可用时，恢复得早的在前；可用时剩余多的在前
         var aa = availableAt(a), ab = availableAt(b);
         if (aa || ab) return (aa || Infinity) - (ab || Infinity);
         return mr(b) - mr(a) || name(a).localeCompare(name(b));
@@ -374,8 +522,12 @@
     PROVIDERS: PROVIDERS,
     baseProvider: baseProvider,
     providerMeta: providerMeta,
+    isBalanceCard: isBalanceCard,
+    groupKey: groupKey,
+    groupMeta: groupMeta,
     windowLabel: windowLabel,
     windowSeconds: windowSeconds,
+    isAsideWindow: isAsideWindow,
     usedOf: usedOf,
     remainingOf: remainingOf,
     level: level,
@@ -387,11 +539,13 @@
     cardStatus: cardStatus,
     availableAt: availableAt,
     nextReset: nextReset,
+    resetWindowLabel: resetWindowLabel,
     resetCards: resetCards,
     isRemote: isRemote,
     canUseReset: canUseReset,
     displayName: displayName,
     splitUser: splitUser,
+    userParts: userParts,
     summary: summary,
     sortCards: sortCards,
     matches: matches,

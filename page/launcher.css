@@ -1,5 +1,10 @@
 html, body { height: 100%; }
 body { margin: 0; display: grid; place-items: center; }
+::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--magpie-faint, rgba(128,128,128,.4)); border: 2px solid transparent; border-radius: 8px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--magpie-muted, rgba(128,128,128,.65)); border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-button, ::-webkit-scrollbar-corner { display: none; background: transparent; }
 .boot { text-align: center; max-width: 420px; padding: 24px; }
 .mark { color: var(--magpie-accent, #3b82f6); margin-bottom: 10px; }
 .boot h1 { font-size: 17px; margin-bottom: 6px; }
