@@ -522,11 +522,62 @@ details.wgroup > .wins { margin-top: 6px; padding-left: 8px; border-left: 2px so
   opacity: .55;
 }
 .w.compact { grid-template-areas: "label bar val"; }
+.w > .wm-bar { grid-column: 2 / -1; margin-top: 2px; }
+.lw > .wm-bar { margin-top: 3px; }
 .spark { display: block; flex: none; }
 .w-meta .spark { flex: none; margin-left: auto; opacity: .85; }
 @container (max-width: 300px) { .w-meta .spark { display: none; } }
 
-.balance { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+/* ---- 用量明细与推断额度胶囊（对齐 [📈] $748.94 / 4.4B [↗] $823.01 / 4.9B） ---- */
+.wm-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.wm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 4px 1px 1px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--fg);
+  cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+}
+.wm-pill:hover:not(:disabled) {
+  background: var(--track);
+  border-color: transparent;
+}
+.wm-ic {
+  width: 17px;
+  height: 17px;
+  border-radius: 4.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.wm-ic.used {
+  background: color-mix(in srgb, #38bdf8 16%, transparent);
+  color: #38bdf8;
+}
+.wm-ic.inferred {
+  background: color-mix(in srgb, #a855f7 16%, transparent);
+  color: #a855f7;
+}
+.wm-pill.used .wm-val { font-weight: 620; color: var(--fg); }
+.wm-pill.inferred .wm-val { font-weight: 560; color: var(--fg2); }
+.wm-sub { color: var(--muted); font-weight: 450; }
+
+.balance { display: flex; align-items: center; justify-content: space-between; gap: 8px 10px; flex-wrap: wrap; min-width: 0; }
+.balance > .wm-bar { width: 100%; margin-top: -2px; }
 .balance .amt { font-size: 20px; font-weight: 680; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .balance .amt.neg { color: var(--red); }
 
@@ -716,7 +767,38 @@ details.wgroup > .wins { margin-top: 6px; padding-left: 8px; border-left: 2px so
 .dialog .opt .note { margin-left: auto; color: var(--muted); font-size: 11.5px; }
 .dialog .mini { margin: 0 0 12px; padding: 8px 10px; background: var(--track); border-radius: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
 .dialog .mini div { display: flex; justify-content: space-between; gap: 10px; }
-.dialog .bar-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.dialog .bar-row, .dialog .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+/* ---- 用量明细与推断额度弹窗 (.usage-dialog) ---- */
+.dialog.usage-dialog { width: min(740px, 100%); padding: 16px 18px 14px; }
+.ud-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.ud-title { flex: 1; min-width: 180px; }
+.ud-title h3 { margin: 0; font-size: 14.5px; font-weight: 650; }
+.ud-sub { color: var(--muted); font-size: 12px; margin-top: 1px; }
+.ud-section { margin-bottom: 12px; }
+.ud-sec-title { font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.ud-win-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.ud-win-card { background: var(--track); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.ud-win-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; gap: 6px; }
+.ud-win-top span { color: var(--muted); font-size: 11.5px; }
+.ud-win-note { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.ud-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.ud-kpi { background: var(--track); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.ud-kpi .k { font-size: 11px; color: var(--muted); }
+.ud-kpi .v { font-size: 16px; font-weight: 660; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ud-kpi .s { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ud-table { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12px; }
+.ud-tr { display: grid; grid-template-columns: minmax(120px, 1.6fr) 56px 110px 72px 72px 84px; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.ud-tr:last-child { border-bottom: 0; }
+.ud-tr.ud-th { background: var(--track); font-size: 11px; font-weight: 600; color: var(--muted); }
+.ud-tr .right { text-align: right; }
+.ud-tr .muted { color: var(--muted); }
+.ud-mname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+.ud-cost { font-weight: 600; color: var(--fg); }
+.ud-agents { display: flex; flex-wrap: wrap; gap: 6px; }
+.ud-agent-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 7px; background: var(--track); border: 1px solid var(--line); font-size: 12px; }
+.ud-agent-pill .muted { color: var(--muted); font-size: 11.5px; }
+.ud-empty { padding: 22px 12px; text-align: center; color: var(--muted); background: var(--track); border-radius: 8px; font-size: 12.5px; }
 
 /* ---- 提示 ---- */
 .toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 30; max-width: min(420px, calc(100vw - 32px)); }

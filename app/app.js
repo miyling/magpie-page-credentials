@@ -66,8 +66,10 @@
     collapsedGroups: {},
     refreshingAll: false,
     visible: true,
-    prefs: { provider: "all", status: "all", sort: "status", group: true, view: "card", q: "" },
+    prefs: { provider: "all", status: "all", sort: "status", group: true, view: "card", autoRefresh: "15", q: "" },
     lastRender: 0,
+    lastVendorRefresh: Date.now(),
+    autoResetFired: {},
   };
 
   function setVisible(v) {
@@ -163,6 +165,7 @@
         sort: S.prefs.sort,
         group: S.prefs.group,
         view: S.prefs.view,
+        autoRefresh: S.prefs.autoRefresh,
       };
       api("POST", "api/prefs", { prefs: p }).catch(function () {});
     }, 500);
@@ -185,6 +188,78 @@
     var s = svg("svg", { viewBox: "0 0 16 16", width: 14, height: 14, "class": "spin-ic", "aria-hidden": "true" });
     s.appendChild(svg("path", { d: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3", fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round" }));
     return s;
+  }
+
+  function chartBadgeIcon() {
+    var s = svg("svg", { viewBox: "0 0 16 16", width: 11, height: 11, "aria-hidden": "true" });
+    s.appendChild(svg("path", { d: "M2.5 2.5v11h11", fill: "none", stroke: "currentColor", "stroke-width": 1.5, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    s.appendChild(svg("path", { d: "M5 10.2l2.4-2.6 2.1 1.7 3.5-3.8", fill: "none", stroke: "currentColor", "stroke-width": 1.5, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    return s;
+  }
+
+  function inferBadgeIcon() {
+    var s = svg("svg", { viewBox: "0 0 16 16", width: 11, height: 11, "aria-hidden": "true" });
+    s.appendChild(svg("path", { d: "M2.5 11.2 6.3 7.4l2.4 2.2 4.8-4.8", fill: "none", stroke: "currentColor", "stroke-width": 1.5, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    s.appendChild(svg("path", { d: "M10.2 4.8h3.3v3.3", fill: "none", stroke: "currentColor", "stroke-width": 1.5, "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    return s;
+  }
+
+  function makeMetricsBar(metrics, card) {
+    if (!metrics || !metrics.used) return null;
+    var u = metrics.used;
+    var inf = metrics.inferred;
+    var bar = el("div", "wm-bar");
+
+    // 1. 已用明细胶囊：[📈] $748.94 / 4.4B
+    var pUsed = el("button", "wm-pill used");
+    pUsed.type = "button";
+    var icU = el("span", "wm-ic used");
+    icU.appendChild(chartBadgeIcon());
+    pUsed.appendChild(icU);
+    var uPrimary = u.cost > 0 ? M.fmtUSD(u.cost) : (u.credits > 0 ? u.credits.toFixed(1) + " 积分" : u.calls + " 次");
+    pUsed.appendChild(el("span", "wm-val num", uPrimary));
+    if (u.totalTokens > 0) {
+      pUsed.appendChild(el("span", "wm-sub num", " / " + M.fmtTokens(u.totalTokens)));
+    }
+    pUsed.title = [
+      "已用明细" + (u.exact ? "（当前窗口精确统计）" : "（近期周期统计）") + " · 点击查看模型明细",
+      "调用次数：" + u.calls + " 次",
+      "总 Token：" + M.fmtTokens(u.totalTokens) + "（输入+输出 " + M.fmtTokens(u.ioTokens) + (u.cacheRead ? " · 缓存读 " + M.fmtTokens(u.cacheRead) : "") + (u.cacheWrite ? " · 缓存写 " + M.fmtTokens(u.cacheWrite) : "") + "）",
+      "API 标价折算：" + M.fmtUSD(u.cost) + (u.credits > 0 ? " · 套餐积分 " + u.credits.toFixed(2) : ""),
+    ].join("\n");
+    pUsed.onclick = function (ev) { ev.stopPropagation(); openUsageModal(card); };
+    bar.appendChild(pUsed);
+
+    // 2. 推断满额胶囊：[↗] $823.01 / 4.9B
+    if (inf && (inf.cost > 0 || inf.totalTokens > 0 || inf.credits > 0)) {
+      var pInf = el("button", "wm-pill inferred");
+      pInf.type = "button";
+      var icI = el("span", "wm-ic inferred");
+      icI.appendChild(inferBadgeIcon());
+      pInf.appendChild(icI);
+      var iPrimary = inf.cost > 0 ? M.fmtUSD(inf.cost) : (inf.credits > 0 ? M.fmtTokens(inf.credits) + " 积分" : "≈100%");
+      pInf.appendChild(el("span", "wm-val num", iPrimary));
+      if (inf.totalTokens > 0) {
+        pInf.appendChild(el("span", "wm-sub num", " / " + M.fmtTokens(inf.totalTokens)));
+      }
+      pInf.title = [
+        "推断满窗额度（按当前已用 " + M.fmtPct(inf.usedPct) + " 线性推算 100% 容量）",
+        "推断满窗价值：≈ " + M.fmtUSD(inf.cost),
+        "推断满窗总 Token：≈ " + M.fmtTokens(inf.totalTokens) + (inf.ioTokens ? "（仅输入+输出 ≈ " + M.fmtTokens(inf.ioTokens) + "）" : ""),
+        "注：仅基于经由 magpie 的调用推算；若账号在其他客户端也有消耗则实际额度更高。",
+      ].join("\n");
+      pInf.onclick = function (ev) { ev.stopPropagation(); openUsageModal(card); };
+      bar.appendChild(pInf);
+    }
+
+    return bar;
+  }
+
+  function makeCardUsageBar(card) {
+    if (!card || !card.usage) return null;
+    var u = card.usage.week || card.usage.today;
+    if (!u || (!u.totalTokens && !u.cost && !u.calls)) return null;
+    return makeMetricsBar({ used: u, inferred: null }, card);
   }
 
   var PNG_ICONS = {
@@ -651,15 +726,34 @@
   }
 
   function makeStatusPills(c, st, parentEl) {
+    var ps = M.poolStats(c);
     var pill = el("span", "pill " + st, STATUS_TEXT[st]);
     if (st === "out" && c.held) pill.title = "额度已耗尽，magpie 暂不向该账户派发请求";
     else if (st === "held") pill.title = "magpie 暂不向该账户派发请求";
     parentEl.appendChild(pill);
+    if (ps.partialOut) {
+      var outNames = ps.outPools.map(function (p) { return p.name; }).join(" / ");
+      var okNames = ps.okPools.map(function (p) { return p.name + " 剩 " + M.fmtPct(p.rem); }).join("、");
+      var pp = el("span", "pill low", outNames + " 耗尽");
+      pp.title = outNames + " 额度已用完；" + okNames + " 仍可正常使用";
+      parentEl.appendChild(pp);
+    }
     if (c.held && st !== "held" && st !== "out") {
       var hp = el("span", "pill held", "暂停");
       hp.title = "magpie 暂不向该账户派发请求";
       parentEl.appendChild(hp);
     }
+  }
+
+  function isWindowPoolBlocked(w, card) {
+    if (!card) return false;
+    if (card.held) return true;
+    if (!w) return M.cardStatus(card) === "out";
+    var ps = M.poolStats(card);
+    var pk = w.pool || w.family || "__main__";
+    var pool = ps.byKey && ps.byKey[pk];
+    if (pool) return pool.rem <= 0.5;
+    return M.remainingOf(w) <= 0.5;
   }
 
   function resetTicketText(resets) {
@@ -715,6 +809,12 @@
     }
     if (r.textContent || meta.childNodes.length > 1) row.appendChild(meta);
     else row.classList.add("compact");
+
+    var wm = M.windowMetrics(w, card);
+    if (wm) {
+      var mBar = makeMetricsBar(wm, card);
+      if (mBar) row.appendChild(mBar);
+    }
     return row;
   }
 
@@ -750,6 +850,16 @@
     head.appendChild(id);
 
     makeStatusPills(c, st, head);
+
+    if (!M.isRemote(c)) {
+      var ub = el("button", "icon");
+      ub.type = "button";
+      ub.title = "查看该账户的用量明细与推断额度";
+      ub.setAttribute("aria-label", "用量明细 " + M.displayName(c));
+      ub.appendChild(chartBadgeIcon());
+      ub.onclick = function () { openUsageModal(c); };
+      head.appendChild(ub);
+    }
 
     var rb = el("button", "icon");
     rb.type = "button";
@@ -794,6 +904,8 @@
         var spk = sparkline(norm, now);
         if (spk) { spk.setAttribute("width", "96"); spk.setAttribute("height", "24"); bal.appendChild(spk); }
       }
+      var balMetrics = (!c.windows || !c.windows.length) ? makeCardUsageBar(c) : null;
+      if (balMetrics) bal.appendChild(balMetrics);
       card.appendChild(bal);
     }
 
@@ -806,7 +918,6 @@
       var unique = {};
       Object.keys(names).forEach(function (n) { if (names[n] === 1) unique[n] = true; });
       var wins = el("div", "wins");
-      var cardBlocked = st === "out" || st === "held";
       groups.forEach(function (g, gi) {
         var target = wins;
         if (g.collapsed) {
@@ -820,7 +931,9 @@
         } else if (g.title && groups.length > 1) {
           wins.appendChild(el("div", "wgroup-title", g.title));
         }
-        g.items.forEach(function (it) { target.appendChild(windowRow(it, c, now, hist, unique, cardBlocked)); });
+        g.items.forEach(function (it) {
+          target.appendChild(windowRow(it, c, now, hist, unique, isWindowPoolBlocked(it.w, c)));
+        });
       });
       card.appendChild(wins);
     } else if (!c.balance && !c.error) {
@@ -873,7 +986,7 @@
 
   // ---- 渲染：列表视图 (.l-table & .l-row) ------------------------------------
 
-  function listWindowCell(item, poolTitle, cardBlocked, now) {
+  function listWindowCell(item, poolTitle, cardBlocked, now, card) {
     var w = item.w;
     var rem = M.remainingOf(w);
     var lvl = M.level(rem);
@@ -898,6 +1011,12 @@
       sub.appendChild(p);
     }
     if (sub.textContent || sub.childNodes.length > 1) cell.appendChild(sub);
+
+    var wm = card ? M.windowMetrics(w, card) : null;
+    if (wm) {
+      var mBar = makeMetricsBar(wm, card);
+      if (mBar) cell.appendChild(mBar);
+    }
     return cell;
   }
 
@@ -967,17 +1086,18 @@
         var spk = sparkline(norm, now);
         if (spk) { spk.setAttribute("width", "88"); spk.setAttribute("height", "22"); bal.appendChild(spk); }
       }
+      var balMetrics2 = (!c.windows || !c.windows.length) ? makeCardUsageBar(c) : null;
+      if (balMetrics2) bal.appendChild(balMetrics2);
       winsCol.appendChild(bal);
     }
     var groups = M.groupWindows(c);
     if (groups.length) {
-      var cardBlocked = st === "out" || st === "held";
       var primaryGrid = el("div", "l-wins-grid");
       groups.forEach(function (g, gi) {
         if (!g.collapsed) {
           var poolTitle = groups.length > 1 ? g.title : "";
           g.items.forEach(function (it) {
-            primaryGrid.appendChild(listWindowCell(it, poolTitle, cardBlocked, now));
+            primaryGrid.appendChild(listWindowCell(it, poolTitle, isWindowPoolBlocked(it.w, c), now, c));
           });
         } else {
           var det = el("details", "wgroup");
@@ -987,7 +1107,7 @@
           var subGrid = el("div", "l-wins-grid");
           subGrid.style.marginTop = "6px";
           g.items.forEach(function (it) {
-            subGrid.appendChild(listWindowCell(it, "", cardBlocked, now));
+            subGrid.appendChild(listWindowCell(it, "", isWindowPoolBlocked(it.w, c), now, c));
           });
           det.appendChild(subGrid);
           winsCol.appendChild(det);
@@ -1040,6 +1160,15 @@
     var acts = el("div", "l-acts");
     if (M.canUseReset(c)) {
       acts.appendChild(makeResetActionBtn(c, key, "重置卡"));
+    }
+    if (!M.isRemote(c)) {
+      var ub2 = el("button", "icon");
+      ub2.type = "button";
+      ub2.title = "查看该账户的用量明细与推断额度";
+      ub2.setAttribute("aria-label", "用量明细 " + M.displayName(c));
+      ub2.appendChild(chartBadgeIcon());
+      ub2.onclick = function () { openUsageModal(c); };
+      acts.appendChild(ub2);
     }
     var rb2 = el("button", "icon");
     rb2.type = "button";
@@ -1239,6 +1368,8 @@
     $("viewCard").setAttribute("aria-pressed", S.prefs.view !== "list" ? "true" : "false");
     $("viewList").setAttribute("aria-pressed", S.prefs.view === "list" ? "true" : "false");
     if ($("sort").value !== S.prefs.sort) $("sort").value = S.prefs.sort;
+    var ar = $("autoRefresh");
+    if (ar && ar.value !== String(S.prefs.autoRefresh || "15")) ar.value = String(S.prefs.autoRefresh || "15");
   }
 
   function render() {
@@ -1299,6 +1430,220 @@
   }
   function modalKeys(e) {
     if (e.key === "Escape" && !$("modal").dataset.busy) closeModal();
+  }
+
+  function openUsageModal(c) {
+    if (!c) return;
+    var meta = M.providerMeta(c);
+    var who = M.displayName(c);
+    var m = $("modal");
+    m.replaceChildren();
+    m.dataset.lock = "1";
+    var d = el("div", "dialog usage-dialog");
+    d.setAttribute("role", "dialog");
+    d.setAttribute("aria-modal", "true");
+
+    var head = el("div", "ud-head");
+    head.appendChild(providerAvatar(meta));
+    var titleWrap = el("div", "ud-title");
+    titleWrap.appendChild(el("h3", "", who + " · 用量明细与推断额度"));
+    titleWrap.appendChild(el("div", "ud-sub", meta.name + (c.plan ? " · " + c.plan : "") + (c.balance ? " · 余额 " + c.balance : "")));
+    head.appendChild(titleWrap);
+
+    var seg = el("div", "seg");
+    var curPeriod = "7d";
+    var periods = [["today", "今日"], ["7d", "7 天"], ["30d", "30 天"], ["all", "全部"]];
+    var periodBtns = {};
+    periods.forEach(function (p) {
+      var b = el("button", "seg-btn", p[1]);
+      b.type = "button";
+      b.setAttribute("aria-pressed", p[0] === curPeriod ? "true" : "false");
+      b.onclick = function () {
+        if (curPeriod === p[0]) return;
+        curPeriod = p[0];
+        Object.keys(periodBtns).forEach(function (k) {
+          periodBtns[k].setAttribute("aria-pressed", k === curPeriod ? "true" : "false");
+        });
+        fetchDetail(curPeriod);
+      };
+      periodBtns[p[0]] = b;
+      seg.appendChild(b);
+    });
+    head.appendChild(seg);
+
+    var closeBtn = el("button", "icon", "×");
+    closeBtn.type = "button";
+    closeBtn.style.fontSize = "17px";
+    closeBtn.title = "关闭 (Esc)";
+    closeBtn.onclick = closeModal;
+    head.appendChild(closeBtn);
+    d.appendChild(head);
+
+    // 窗口推断额度一览（当卡片存在带度量的窗口时展示）
+    var winList = (c.windows || []).filter(function (w) { return !!M.windowMetrics(w, c); });
+    if (winList.length) {
+      var infSec = el("div", "ud-section");
+      infSec.appendChild(el("div", "ud-sec-title", "当前窗口用量与 100% 满额推算"));
+      var infGrid = el("div", "ud-win-grid");
+      winList.forEach(function (w) {
+        var wm = M.windowMetrics(w, c);
+        if (!wm) return;
+        var box = el("div", "ud-win-card");
+        var top = el("div", "ud-win-top");
+        top.appendChild(el("b", "", M.windowLabel(w.name) + (w.pool ? " · " + w.pool : "")));
+        top.appendChild(el("span", "num", "已用 " + M.fmtPct(M.usedOf(w)) + " · 剩 " + M.fmtPct(M.remainingOf(w))));
+        box.appendChild(top);
+        var mBar = makeMetricsBar(wm, c);
+        if (mBar) {
+          mBar.querySelectorAll("button").forEach(function (btn) { btn.onclick = null; btn.style.cursor = "default"; });
+          box.appendChild(mBar);
+        }
+        if (wm.inferred && wm.inferred.ioTokens > 0) {
+          box.appendChild(el("div", "ud-win-note",
+            "已用 I/O Token " + M.fmtTokens(wm.used.ioTokens) + (wm.used.cacheRead ? " + 缓存读 " + M.fmtTokens(wm.used.cacheRead) : "") +
+            " → 推断满窗 I/O ≈ " + M.fmtTokens(wm.inferred.ioTokens) + "（含缓存总计 ≈ " + M.fmtTokens(wm.inferred.totalTokens) + "）"
+          ));
+        }
+        infGrid.appendChild(box);
+      });
+      infSec.appendChild(infGrid);
+      d.appendChild(infSec);
+    }
+
+    var body = el("div", "ud-body");
+    d.appendChild(body);
+
+    var btns = el("div", "btns");
+    var okBtn = el("button", "", "关闭");
+    okBtn.type = "button";
+    okBtn.onclick = closeModal;
+    btns.appendChild(okBtn);
+    d.appendChild(btns);
+
+    m.appendChild(d);
+    m.hidden = false;
+    m.onclick = function (e) { if (e.target === m) closeModal(); };
+    document.addEventListener("keydown", modalKeys);
+
+    function renderDetail(data) {
+      body.replaceChildren();
+      var calls = Number(data.calls) || 0;
+      var errors = Number(data.errors) || 0;
+      var inp = Number(data.input) || 0;
+      var outp = Number(data.output) || 0;
+      var cr = Number(data.cache_read) || 0;
+      var cw = (Number(data.cache_write) || 0) + (Number(data.cache_write_1h) || 0);
+      var io = inp + outp;
+      var total = io + cr + cw;
+      var cost = Number(data.cost) || 0;
+      var credits = Number(data.credits) || 0;
+      if (cost === 0 && total > 0) {
+        cost = (inp * 0.14 + outp * 0.28 + cr * 0.014 + cw * 0.14) / 1e6;
+      }
+      var timed = Number(data.timed) || 0;
+      var ttft = timed > 0 ? (Number(data.ttft_ms) / timed / 1000).toFixed(2) + "s" : "—";
+
+      var kpis = el("div", "ud-kpis");
+      var k1 = el("div", "ud-kpi");
+      k1.appendChild(el("div", "k", "折算费用 / 积分"));
+      k1.appendChild(el("div", "v num", M.fmtUSD(cost) + (credits > 0 ? " · " + credits.toFixed(1) + " 积分" : "")));
+      k1.appendChild(el("div", "s", calls + " 次调用" + (errors ? " · " + errors + " 次错误" : "")));
+      kpis.appendChild(k1);
+
+      var k2 = el("div", "ud-kpi");
+      k2.appendChild(el("div", "k", "总 Token 消耗"));
+      k2.appendChild(el("div", "v num", M.fmtTokens(total)));
+      k2.appendChild(el("div", "s", "输入 " + M.fmtTokens(inp) + " · 输出 " + M.fmtTokens(outp)));
+      kpis.appendChild(k2);
+
+      var k3 = el("div", "ud-kpi");
+      k3.appendChild(el("div", "k", "缓存 Token 明细"));
+      k3.appendChild(el("div", "v num", M.fmtTokens(cr + cw)));
+      k3.appendChild(el("div", "s", "缓存读 " + M.fmtTokens(cr) + " · 缓存写 " + M.fmtTokens(cw)));
+      kpis.appendChild(k3);
+
+      var k4 = el("div", "ud-kpi");
+      k4.appendChild(el("div", "k", "平均首字延迟 (TTFT)"));
+      k4.appendChild(el("div", "v num", ttft));
+      k4.appendChild(el("div", "s", timed ? timed + " 次计时请求" : "暂无计时样本"));
+      kpis.appendChild(k4);
+      body.appendChild(kpis);
+
+      var models = (data.by && Array.isArray(data.by.model)) ? data.by.model : [];
+      if (models.length) {
+        var mSec = el("div", "ud-section");
+        mSec.appendChild(el("div", "ud-sec-title", "按模型用量明细（" + models.length + "）"));
+        var tbl = el("div", "ud-table");
+        var th = el("div", "ud-tr ud-th");
+        th.appendChild(el("span", "", "模型"));
+        th.appendChild(el("span", "num right", "调用"));
+        th.appendChild(el("span", "num right", "输入 / 输出"));
+        th.appendChild(el("span", "num right", "缓存读"));
+        th.appendChild(el("span", "num right", "总 Token"));
+        th.appendChild(el("span", "num right", "折算费用"));
+        tbl.appendChild(th);
+
+        models.forEach(function (mRow) {
+          var mIn = Number(mRow.input) || 0;
+          var mOut = Number(mRow.output) || 0;
+          var mCr = Number(mRow.cache_read) || 0;
+          var mCw = (Number(mRow.cache_write) || 0) + (Number(mRow.cache_write_1h) || 0);
+          var mTot = mIn + mOut + mCr + mCw;
+          var mCost = Number(mRow.cost) || 0;
+          var mCred = Number(mRow.credits) || 0;
+          if (mCost === 0 && mTot > 0) {
+            mCost = (mIn * 0.14 + mOut * 0.28 + mCr * 0.014 + mCw * 0.14) / 1e6;
+          }
+          var tr = el("div", "ud-tr");
+          var mName = el("span", "ud-mname mono", mRow.name || mRow.id || "—");
+          mName.title = mRow.name || mRow.id || "";
+          tr.appendChild(mName);
+          tr.appendChild(el("span", "num right", String(mRow.calls || 0)));
+          tr.appendChild(el("span", "num right muted", M.fmtTokens(mIn) + " / " + M.fmtTokens(mOut)));
+          tr.appendChild(el("span", "num right muted", M.fmtTokens(mCr)));
+          tr.appendChild(el("span", "num right", M.fmtTokens(mTot)));
+          tr.appendChild(el("span", "num right ud-cost", M.fmtUSD(mCost) + (mCred > 0 ? " (" + mCred.toFixed(1) + "分)" : "")));
+          tbl.appendChild(tr);
+        });
+        mSec.appendChild(tbl);
+        body.appendChild(mSec);
+      } else {
+        body.appendChild(el("div", "ud-empty", "该统计周期内暂无经由 magpie 记录的模型调用明细。"));
+      }
+
+      var agents = (data.by && Array.isArray(data.by.agent)) ? data.by.agent : [];
+      if (agents.length) {
+        var aSec = el("div", "ud-section");
+        aSec.appendChild(el("div", "ud-sec-title", "调用客户端 / Agent 分布"));
+        var aChips = el("div", "ud-agents");
+        agents.forEach(function (ag) {
+          var aTot = (Number(ag.input) || 0) + (Number(ag.output) || 0) + (Number(ag.cache_read) || 0) + (Number(ag.cache_write) || 0);
+          var aCost = Number(ag.cost) || 0;
+          var pill = el("span", "ud-agent-pill");
+          var aic = providerIcon(ag.icon, "c-ic");
+          if (aic) pill.appendChild(aic);
+          pill.appendChild(el("b", "", ag.name || ag.id));
+          pill.appendChild(el("span", "num muted", ag.calls + " 次 · " + M.fmtTokens(aTot) + (aCost > 0 ? " · " + M.fmtUSD(aCost) : "")));
+          aChips.appendChild(pill);
+        });
+        aSec.appendChild(aChips);
+        body.appendChild(aSec);
+      }
+    }
+
+    function fetchDetail(period) {
+      body.replaceChildren(el("div", "ud-empty", "正在读取 " + who + " 的用量明细…"));
+      var q = "api/usage?provider=" + encodeURIComponent(c.provider) +
+        "&user=" + encodeURIComponent(c.user || "") +
+        "&period=" + encodeURIComponent(period);
+      api("GET", q).then(function (j) {
+        renderDetail(j.data || {});
+      }, function (err) {
+        body.replaceChildren(el("div", "errbox", "读取用量明细失败：" + err.message));
+      });
+    }
+
+    fetchDetail(curPeriod);
   }
 
   function askReset(c) {
@@ -1417,7 +1762,28 @@
     cancel.focus();
   }
 
-  // ---- 定时 -------------------------------------------------------------------
+  // ---- 定时与自动刷新 ---------------------------------------------------------
+
+  function checkExpiredWindows(now) {
+    if (String(S.prefs.autoRefresh) === "0" || S.refreshingAll) return;
+    S.cards.forEach(function (c) {
+      if (M.isRemote(c)) return;
+      var cKey = M.cardKey(c);
+      if (S.busy["r:" + cKey]) return;
+      (c.windows || []).forEach(function (w) {
+        if (M.usedOf(w) <= 0 || !w.resetsAt) return;
+        var at = M.time(w.resetsAt);
+        // 窗口刚刚跨过重置时刻（0 ~ 45s 内）自动向厂商触发一次该账户的刷新
+        if (Number.isFinite(at) && now >= at && now - at < 45000) {
+          var fKey = cKey + "|" + w.resetsAt;
+          if (!S.autoResetFired[fKey]) {
+            S.autoResetFired[fKey] = true;
+            refreshOne(c);
+          }
+        }
+      });
+    });
+  }
 
   function tick() {
     var now = Date.now();
@@ -1425,13 +1791,28 @@
     for (var i = 0; i < cds.length; i++) fillCountdown(cds[i], now);
     var ags = document.querySelectorAll(".ago");
     for (var j = 0; j < ags.length; j++) ags[j].textContent = M.fmtAgo(Number(ags[j].dataset.ago), now);
+    checkExpiredWindows(now);
   }
   setInterval(function () { if (S.visible) tick(); }, 1000);
   setInterval(function () {
     if (!S.visible || sessionLost) return;
+    var mode = Number(S.prefs.autoRefresh);
+    if (mode === 0) return;
+    var now = Date.now();
+    // 选了 60s / 180s / 300s 主动刷新时，按设定间隔静默触发一次全量向厂商刷新
+    if (mode >= 60 && !S.refreshingAll && now - S.lastVendorRefresh >= mode * 1000) {
+      S.lastVendorRefresh = now;
+      api("POST", "api/refresh", {}).then(function (j) {
+        takeCards(j);
+        render();
+        loadHistory();
+      }, function () {});
+      return;
+    }
+    // 默认每 15 秒同步一次本机网关缓存与最新用量明细
     load();
-    if (Date.now() - histAt > 5 * 60e3) loadHistory();
-  }, 60e3);
+    if (now - histAt > 5 * 60e3) loadHistory();
+  }, 15e3);
 
   // ---- 启动与快捷键 -----------------------------------------------------------
 
@@ -1443,6 +1824,12 @@
 
   $("refreshAll").onclick = refreshAll;
   $("sort").onchange = function () { setPref("sort", $("sort").value); };
+  if ($("autoRefresh")) {
+    $("autoRefresh").onchange = function () {
+      S.lastVendorRefresh = Date.now();
+      setPref("autoRefresh", $("autoRefresh").value);
+    };
+  }
   $("groupBtn").onclick = function () { setPref("group", !S.prefs.group); };
   $("viewCard").onclick = function () { setPref("view", "card"); };
   $("viewList").onclick = function () { setPref("view", "list"); };
@@ -1505,6 +1892,7 @@
     if (typeof p.sort === "string") S.prefs.sort = p.sort;
     if (typeof p.group === "boolean") S.prefs.group = p.group;
     if (p.view === "list" || p.view === "card") S.prefs.view = p.view;
+    if (typeof p.autoRefresh === "string") S.prefs.autoRefresh = p.autoRefresh;
   }, function () {}).then(function () {
     return load();
   }).then(function () {

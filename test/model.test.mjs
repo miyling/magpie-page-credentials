@@ -129,15 +129,25 @@ test("antigravity windows group by pool and merge model variants", () => {
   assert.equal(models.collapsed, true);
   assert.equal(models.items.length, 2);
   assert.equal(models.items[0].label, "Claude Opus 5.5 · High/Low");
-  // 状态只看池子级窗口：Claude & GPT 7 天用完 → out
-  assert.equal(M.cardStatus(antigravity), "out");
+  // 多额度池独立判定：Claude & GPT 耗尽但 Gemini 还有 76% 剩余 → 账户整体仍为 ok，且标记 partialOut
+  assert.equal(M.cardStatus(antigravity), "ok");
+  const ps = M.poolStats(antigravity);
+  assert.equal(ps.partialOut, true);
+  assert.deepEqual([...ps.outPools.map((p) => p.name)], ["Claude & GPT"]);
+  assert.deepEqual([...ps.okPools.map((p) => p.name)], ["Gemini"]);
+  // 当所有池子都耗尽时才为 out
+  const allOutAg = {
+    ...antigravity,
+    windows: antigravity.windows.map((w) => ({ ...w, used: 100 })),
+  };
+  assert.equal(M.cardStatus(allOutAg), "out");
 });
 
 test("summary counts", () => {
   const s = M.summary([codexTeam, claude, antigravity], NOW);
   assert.equal(s.total, 3);
-  assert.equal(s.ok, 1);
-  assert.equal(s.out, 2);
+  assert.equal(s.ok, 2);
+  assert.equal(s.out, 1);
   assert.equal(s.resets, 2);
   assert.equal(s.soonestResetCard.at, Date.parse("2026-11-30T19:54:05Z"));
   assert.ok(s.nextReset.at > NOW);
@@ -160,6 +170,17 @@ test("formatting", () => {
   assert.equal(M.fmtDuration(3 * 86400 + 4 * 3600), "3 天 4 小时");
   assert.equal(M.fmtPct(0.4), "0.4%");
   assert.equal(M.fmtPct(99.97), "100%");
+  assert.equal(M.fmtTokens(4400000000), "4.4B");
+  assert.equal(M.fmtTokens(148500000), "148.5M");
+  assert.equal(M.fmtUSD(748.94), "$748.94");
+  const wm = M.windowMetrics(
+    { name: "7 days", used: 91, holds: { tokens: 200000000, cost: 823.01, routed: { calls: 120, tokens: 182000000, cacheRead: 4218000000, cost: 748.94 } } },
+    claude,
+  );
+  assert.equal(wm.used.totalTokens, 4400000000);
+  assert.equal(M.fmtUSD(wm.used.cost), "$748.94");
+  assert.equal(M.fmtTokens(wm.inferred.totalTokens), "4.8B");
+  assert.equal(M.fmtUSD(wm.inferred.cost), "$823.01");
   assert.equal(M.resetOutcome({ code: "reset", windows: 2 }), "已重置 2 个窗口");
   assert.equal(M.resetOutcome({ code: "no_credit" }), "这个账户已经没有重置卡了");
   assert.equal(M.resetOutcome({ code: "weird" }), "weird");

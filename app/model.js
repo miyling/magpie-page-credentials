@@ -299,35 +299,76 @@
     return String(card.provider || "") + "|" + String(card.user || "").toLowerCase() + "|" + String(card.name || "");
   }
 
-  function minRemaining(card) {
+  // 按独立额度池（pool 或 family）聚合：
+  // 同一池内的多个窗口（如 5h 和 7d）共享限制，取最小剩余；
+  // 不同池（如 Antigravity 的 Gemini 与 Claude & GPT）彼此独立：
+  // 只有所有池子都耗尽时整个账户才算「已耗尽（out）」，若仅部分池子耗尽则账户仍可用。
+  function poolStats(card) {
     var ws = primaryWindows(card);
-    if (!ws.length) return null;
-    var m = 100;
-    ws.forEach(function (w) { m = Math.min(m, remainingOf(w)); });
-    return m;
+    if (!ws.length) {
+      return { pools: [], byKey: {}, outPools: [], okPools: [], minAll: null, minUsable: null, allOut: false, partialOut: false };
+    }
+    var byKey = {};
+    var order = [];
+    ws.forEach(function (w) {
+      var pk = w.pool || w.family || "__main__";
+      if (!byKey[pk]) {
+        byKey[pk] = { key: pk, name: w.pool || w.family || "主额度", rem: 100, resetsAt: 0 };
+        order.push(pk);
+      }
+      var r = remainingOf(w);
+      if (r < byKey[pk].rem) byKey[pk].rem = r;
+      if (r <= 0.5) {
+        var rt = time(w.resetsAt);
+        if (Number.isFinite(rt) && rt > byKey[pk].resetsAt) byKey[pk].resetsAt = rt;
+      }
+    });
+    var pools = order.map(function (k) { return byKey[k]; });
+    var outPools = pools.filter(function (p) { return p.rem <= 0.5; });
+    var okPools = pools.filter(function (p) { return p.rem > 0.5; });
+    var minAll = 100;
+    pools.forEach(function (p) { if (p.rem < minAll) minAll = p.rem; });
+    var minUsable = okPools.length ? 100 : 0;
+    okPools.forEach(function (p) { if (p.rem < minUsable) minUsable = p.rem; });
+    return {
+      pools: pools,
+      byKey: byKey,
+      outPools: outPools,
+      okPools: okPools,
+      minAll: minAll,
+      minUsable: minUsable,
+      allOut: pools.length > 0 && outPools.length === pools.length,
+      partialOut: outPools.length > 0 && okPools.length > 0,
+    };
+  }
+
+  function minRemaining(card) {
+    var ps = poolStats(card);
+    if (!ps.pools.length) return null;
+    if (ps.allOut) return ps.minAll;
+    return ps.minUsable;
   }
 
   // cardStatus：error / held / out / low / ok / info（无窗口，如余额卡）
   function cardStatus(card) {
     if (card.error) return "error";
-    var m = minRemaining(card);
-    if (m !== null && m <= 0.5) return "out";
+    var ps = poolStats(card);
+    if (!ps.pools.length) return card.held ? "held" : "info";
+    if (ps.allOut) return "out";
     if (card.held) return "held";
-    if (m === null) return "info";
-    if (m < 20) return "low";
+    if (ps.minUsable < 20) return "low";
     return "ok";
   }
 
-  // availableAt：用尽的窗口全部重置的时刻（即账户恢复可用的最早时间）
+  // availableAt：当所有池子都耗尽时，最早恢复可用的池子的重置时刻
   function availableAt(card) {
-    var t = 0;
-    primaryWindows(card).forEach(function (w) {
-      if (remainingOf(w) <= 0.5) {
-        var r = time(w.resetsAt);
-        if (Number.isFinite(r) && r > t) t = r;
-      }
+    var ps = poolStats(card);
+    if (!ps.outPools.length) return null;
+    var best = Infinity;
+    ps.outPools.forEach(function (p) {
+      if (p.resetsAt > 0 && p.resetsAt < best) best = p.resetsAt;
     });
-    return t || null;
+    return Number.isFinite(best) ? best : null;
   }
 
   function nextReset(card, now) {
@@ -500,6 +541,96 @@
     return Math.round(v) + "%";
   }
 
+  function fmtTokens(n) {
+    n = Number(n) || 0;
+    if (n <= 0) return "0";
+    if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, "") + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K";
+    return String(Math.round(n));
+  }
+
+  function fmtUSD(n) {
+    n = Number(n) || 0;
+    if (n <= 0) return "$0.00";
+    if (n < 0.01) return "$" + n.toFixed(3);
+    return "$" + n.toFixed(2);
+  }
+
+  // 计算窗口的「已用明细（routed）」与「推断满窗额度（inferred）」
+  function windowMetrics(w, card) {
+    if (!w) return null;
+    var name = String(w.name || "").trim();
+    // MCP 工具调用次数窗口不套用 LLM token 明细
+    if (/^mcp\b/i.test(name)) return null;
+    var allWins = (card && Array.isArray(card.windows)) ? card.windows : [];
+    var hasTotalCredits = allWins.some(function (x) { return /^total\s+credits$/i.test(String(x && x.name || "").trim()); });
+    if (hasTotalCredits && /^(credits|extra\s+credits)$/i.test(name)) return null;
+
+    var usedPct = usedOf(w);
+    var used = null;
+
+    // 1. 优先使用 magpie 按窗口精确边界算出的 holds.routed
+    if (w.holds && w.holds.routed && ((Number(w.holds.routed.tokens) || 0) > 0 || (Number(w.holds.routed.calls) || 0) > 0)) {
+      var r = w.holds.routed;
+      var io = Number(r.tokens) || 0;
+      var cr = Number(r.cacheRead) || 0;
+      var cw = Number(r.cacheWrite) || 0;
+      used = {
+        calls: Number(r.calls) || 0,
+        ioTokens: io,
+        cacheRead: cr,
+        cacheWrite: cw,
+        totalTokens: io + cr + cw,
+        cost: Number(r.cost) || 0,
+        credits: Number(r.credits) || 0,
+        exact: true,
+      };
+    } else if (card && card.usage && usedPct > 0 && !w.family) {
+      // 2. 当 holds 因 <5% 阈值、日志起点或无 user 缺失时，回退使用网关周期用量
+      var ps2 = poolStats(card);
+      // 多额度池卡片（如 Antigravity）在缺少池级精确 holds 时，仅在第一个池子的主周期窗口展示账户总用量
+      if (ps2.pools.length > 1 && w.pool && w.pool !== ps2.pools[0].name) return null;
+      var secs = windowSeconds(name);
+      var isShort = (secs > 0 && secs <= 86400) || /tokens\s*\(est\.\)/i.test(name);
+      var u = isShort ? card.usage.today : (card.usage.week || card.usage.today);
+      if (u && (u.totalTokens > 0 || u.cost > 0 || u.credits > 0)) {
+        used = {
+          calls: Number(u.calls) || 0,
+          ioTokens: Number(u.ioTokens) || 0,
+          cacheRead: Number(u.cacheRead) || 0,
+          cacheWrite: Number(u.cacheWrite) || 0,
+          totalTokens: Number(u.totalTokens) || 0,
+          cost: Number(u.cost) || 0,
+          credits: Number(u.credits) || 0,
+          exact: false,
+        };
+      }
+    }
+
+    if (!used) return null;
+
+    var inferred = null;
+    if (usedPct > 0 && !w.unlimited) {
+      var ratio = usedPct / 100;
+      var infCost = (w.holds && Number(w.holds.cost) > 0) ? Number(w.holds.cost) : (used.cost > 0 ? used.cost / ratio : 0);
+      var infCredits = used.credits > 0 ? used.credits / ratio : 0;
+      var infTotal = used.totalTokens > 0 ? Math.round(used.totalTokens / ratio) : ((w.holds && Number(w.holds.tokens)) || 0);
+      var infIO = (w.holds && Number(w.holds.tokens) > 0) ? Number(w.holds.tokens) : (used.ioTokens > 0 ? Math.round(used.ioTokens / ratio) : 0);
+      if (infTotal > 0 || infCost > 0 || infCredits > 0) {
+        inferred = {
+          cost: infCost,
+          credits: infCredits,
+          totalTokens: infTotal,
+          ioTokens: infIO,
+          usedPct: usedPct,
+        };
+      }
+    }
+
+    return { used: used, inferred: inferred };
+  }
+
   var OUTCOMES = {
     reset: function (o) { return "已重置 " + (o.windows || 1) + " 个窗口"; },
     nothing_to_reset: function () { return "没有可重置的窗口（窗口都还没用过），重置卡保留"; },
@@ -534,6 +665,7 @@
     paceOf: paceOf,
     groupWindows: groupWindows,
     primaryWindows: primaryWindows,
+    poolStats: poolStats,
     cardKey: cardKey,
     minRemaining: minRemaining,
     cardStatus: cardStatus,
@@ -554,6 +686,9 @@
     fmtDate: fmtDate,
     fmtAgo: fmtAgo,
     fmtPct: fmtPct,
+    fmtTokens: fmtTokens,
+    fmtUSD: fmtUSD,
+    windowMetrics: windowMetrics,
     resetOutcome: resetOutcome,
     time: time,
   };

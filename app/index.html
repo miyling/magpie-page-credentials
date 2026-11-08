@@ -44,6 +44,13 @@
         <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2.5 3.5h4.5l1.5 1.8h5v7.2a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         <span>分组</span>
       </button>
+      <select id="autoRefresh" aria-label="自动刷新" title="自动同步本机网关状态，并在窗口倒计时归零或到达设定周期时自动刷新额度">
+        <option value="15">自动同步 (15s)</option>
+        <option value="60">每 1 分钟刷新</option>
+        <option value="180">每 3 分钟刷新</option>
+        <option value="300">每 5 分钟刷新</option>
+        <option value="0">关闭自动刷新</option>
+      </select>
       <button type="button" id="refreshAll" class="primary" title="让 magpie 重新读取所有账户的额度（同一账户 30 秒内只读一次）">
         <svg class="spin-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>全部刷新</span>
