@@ -1,0 +1,4 @@
+node_modules/
+page/session/
+*.tmp
+.DS_Store

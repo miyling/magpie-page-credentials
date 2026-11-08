@@ -1,0 +1,56 @@
+{
+  "name": "magpie-page-credentials",
+  "version": "0.1.0",
+  "description": "Magpie 页面插件：一页看清所有订阅账户的 5h / 7d 等窗口用量、限额、重置时间，并可直接刷新额度、使用 Codex 重置卡",
+  "type": "module",
+  "main": "./index.mjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/miyling/magpie-page-credentials.git"
+  },
+  "homepage": "https://github.com/miyling/magpie-page-credentials#readme",
+  "files": [
+    "index.mjs",
+    "lib",
+    "app",
+    "page",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "magpie",
+    "magpie-plugin",
+    "magpie-page",
+    "quota",
+    "codex",
+    "claude"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "magpie": {
+    "page": {
+      "title": "Credentials",
+      "titles": {
+        "zh": "凭据额度",
+        "zh-TW": "憑據額度"
+      },
+      "file": "page/index.html",
+      "icon": "page/icon.svg",
+      "service": {
+        "port": 4396,
+        "option": "port"
+      }
+    },
+    "permissions": [],
+    "options": {
+      "port": 4396,
+      "gatewayUrl": "",
+      "gatewayKey": ""
+    }
+  }
+}

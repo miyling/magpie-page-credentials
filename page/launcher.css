@@ -1,0 +1,9 @@
+html, body { height: 100%; }
+body { margin: 0; display: grid; place-items: center; }
+.boot { text-align: center; max-width: 420px; padding: 24px; }
+.mark { color: var(--magpie-accent, #3b82f6); margin-bottom: 10px; }
+.boot h1 { font-size: 17px; margin-bottom: 6px; }
+.actions { display: flex; gap: 8px; justify-content: center; margin: 14px 0 6px; }
+.help { text-align: left; margin-top: 12px; color: var(--magpie-muted, GrayText); }
+.help summary { cursor: pointer; }
+.help p { margin: 8px 0 0; line-height: 1.6; }

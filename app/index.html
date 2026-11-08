@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>凭据额度</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="model.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="title">
+      <h1>凭据额度</h1>
+      <span id="sub" class="sub">加载中…</span>
+    </div>
+    <div class="tools">
+      <label class="search">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="搜索邮箱 / 别名 / 套餐" autocomplete="off" spellcheck="false" aria-label="搜索账户">
+      </label>
+      <select id="sort" aria-label="排序">
+        <option value="status">可用优先</option>
+        <option value="risk">剩余最少在前</option>
+        <option value="roomy">剩余最多在前</option>
+        <option value="reset">最先重置在前</option>
+        <option value="name">按名称</option>
+      </select>
+      <button type="button" id="groupBtn" class="ghost" aria-pressed="true" title="按服务分组">分组</button>
+      <button type="button" id="refreshAll" class="primary" title="让 magpie 重新读取所有账户的额度（同一账户 30 秒内只读一次）">
+        <svg class="spin-ic" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>全部刷新</span>
+      </button>
+    </div>
+  </header>
+
+  <section id="stats" class="stats" aria-label="汇总"></section>
+  <nav id="filters" class="filters" aria-label="筛选"></nav>
+  <div id="banner"></div>
+  <main id="list" class="list" aria-live="polite"></main>
+
+  <div id="modal" class="modal" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>

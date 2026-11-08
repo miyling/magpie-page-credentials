@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>凭据额度</title>
+  <link rel="stylesheet" href="launcher.css">
+  <!-- magpie 沙箱入口页：connect-src 'none'，本页不联网。
+       它读出本地服务的会话密钥（session/<port>.js，由插件后端写入），
+       然后把整个帧跳到插件的本地服务（magpie web 下经 magpie 反代）。 -->
+  <script src="_magpie/bridge.js"></script>
+  <script src="launcher.js" defer></script>
+</head>
+<body>
+  <main class="boot" aria-live="polite">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" width="44" height="44"><rect x="4" y="8" width="40" height="32" rx="8" fill="currentColor" opacity=".12"/><rect x="10" y="17" width="28" height="4" rx="2" fill="currentColor" opacity=".35"/><rect x="10" y="17" width="19" height="4" rx="2" fill="currentColor"/><rect x="10" y="27" width="28" height="4" rx="2" fill="currentColor" opacity=".35"/><rect x="10" y="27" width="9" height="4" rx="2" fill="currentColor"/></svg>
+    </div>
+    <h1>凭据额度</h1>
+    <p id="msg" class="muted">正在连接插件服务…</p>
+    <div id="actions" class="actions" hidden>
+      <button type="button" id="retry">重试</button>
+      <button type="button" id="restart">重启插件服务</button>
+    </div>
+    <details id="help" class="help" hidden>
+      <summary>为什么打不开？</summary>
+      <p>看板由本插件在 magpie 插件宿主里起的本地服务（默认端口 <code id="port">4396</code>）提供。
+        magpie 打开本页时会自动拉起宿主；如果端口被占用，可在插件选项里改 <code>port</code>。</p>
+      <p>「重启插件服务」会重新写一次本插件的选项，magpie 随之重启插件宿主。</p>
+    </details>
+  </main>
+</body>
+</html>
