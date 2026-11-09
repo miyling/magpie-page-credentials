@@ -727,16 +727,17 @@
 
   function makeStatusPills(c, st, parentEl) {
     var ps = M.poolStats(c);
-    var pill = el("span", "pill " + st, STATUS_TEXT[st]);
-    if (st === "out" && c.held) pill.title = "额度已耗尽，magpie 暂不向该账户派发请求";
-    else if (st === "held") pill.title = "magpie 暂不向该账户派发请求";
-    parentEl.appendChild(pill);
-    if (ps.partialOut) {
+    if (ps.partialOut && (st === "ok" || st === "low")) {
       var outNames = ps.outPools.map(function (p) { return p.name; }).join(" / ");
       var okNames = ps.okPools.map(function (p) { return p.name + " 剩 " + M.fmtPct(p.rem); }).join("、");
-      var pp = el("span", "pill low", outNames + " 耗尽");
+      var pp = el("span", "pill low", "部分可用");
       pp.title = outNames + " 额度已用完；" + okNames + " 仍可正常使用";
       parentEl.appendChild(pp);
+    } else {
+      var pill = el("span", "pill " + st, STATUS_TEXT[st]);
+      if (st === "out" && c.held) pill.title = "额度已耗尽，magpie 暂不向该账户派发请求";
+      else if (st === "held") pill.title = "magpie 暂不向该账户派发请求";
+      parentEl.appendChild(pill);
     }
     if (c.held && st !== "held" && st !== "out") {
       var hp = el("span", "pill held", "暂停");

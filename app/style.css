@@ -437,7 +437,7 @@ select:hover { border-color: var(--faint); }
   line-height: 15px;
 }
 
-.pill { flex: none; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; line-height: 18px; white-space: nowrap; }
+.pill { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; line-height: 18px; white-space: nowrap; }
 .pill.ok { color: var(--green); background: color-mix(in srgb, var(--green) 13%, transparent); }
 .pill.low, .pill.held { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
 .pill.out, .pill.error { color: var(--red); background: color-mix(in srgb, var(--red) 13%, transparent); }
