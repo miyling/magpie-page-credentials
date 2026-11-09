@@ -228,7 +228,7 @@
     if (!w) return false;
     if (w.text) return true;
     var name = String(w.name || "").trim();
-    if (/^(mcp\b|extra usage$|on-demand$|video\s*·|image\s*·)/i.test(name)) return true;
+    if (/^(mcp\b|extra usage$|on-demand$|video\s*·|image\s*·|free model tokens$|completions$)/i.test(name) || /tokens\s*\(est\.\)/i.test(name)) return true;
     if (/^(credits|extra credits)$/i.test(name) && Array.isArray(allWindows)) {
       var hasTotal = allWindows.some(function (x) { return /^total credits$/i.test(String(x.name || "").trim()); });
       if (hasTotal) return true;

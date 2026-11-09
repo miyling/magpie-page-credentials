@@ -619,7 +619,7 @@ details.wgroup > .wins { margin-top: 6px; padding-left: 8px; border-left: 2px so
 }
 .l-thead {
   display: grid;
-  grid-template-columns: minmax(155px, 1.15fr) 104px minmax(240px, 2.85fr) minmax(135px, .95fr) 96px;
+  grid-template-columns: minmax(155px, 1.15fr) 104px minmax(240px, 2.85fr) minmax(135px, .95fr) 128px;
   gap: 12px;
   align-items: center;
   padding: 8px 14px;
@@ -656,7 +656,7 @@ details.wgroup > .wins { margin-top: 6px; padding-left: 8px; border-left: 2px so
 
 .l-row {
   display: grid;
-  grid-template-columns: minmax(155px, 1.15fr) 104px minmax(240px, 2.85fr) minmax(135px, .95fr) 96px;
+  grid-template-columns: minmax(155px, 1.15fr) 104px minmax(240px, 2.85fr) minmax(135px, .95fr) 128px;
   gap: 12px;
   align-items: center;
   padding: 10px 14px;
